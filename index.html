@@ -1,1 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLBB Draft Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #1a6ef5;
+    --blue-glow: #3a8fff;
+    --blue-dark: #0a1e4a;
+    --blue-mid: #0d2a6e;
+    --red: #e52020;
+    --red-glow: #ff4444;
+    --red-dark: #4a0a0a;
+    --red-mid: #6e0d0d;
+    --gold: #f0c040;
+    --gold-dim: #a07820;
+    --gold-glow: #ffe080;
+    --bg-deep: #050a14;
+    --bg-panel: #0b111f;
+    --bg-card: #0f1828;
+    --bg-hover: #1a2540;
+    --border-dim: #1e2e4a;
+    --border-gold: #5a4010;
+    --text-bright: #e8eeff;
+    --text-mid: #8a9abf;
+    --text-dim: #4a5a7a;
+    --ban-red: #cc2020;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-bright);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 50%, rgba(26,110,245,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(229,32,32,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 50% 0%, rgba(240,192,64,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 16px 14px 24px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    margin-bottom: 14px;
+    position: relative;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .header-logo svg { flex-shrink: 0; }
+
+  .header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    background: linear-gradient(180deg, #ffe080 0%, #f0c040 40%, #c08020 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    line-height: 1;
+  }
+
+  .header-sub {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 3px;
+  }
+
+  .header-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    opacity: 0.4;
+  }
+  .header-divider::before, .header-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .header-divider-gem {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .btn {
+    padding: 6px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-card);
+    color: var(--text-mid);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+  }
+  .btn:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+    background: var(--bg-hover);
+  }
+  .btn-danger {
+    border-color: #4a1010;
+    color: #cc4040;
+  }
+  .btn-danger:hover {
+    border-color: var(--red-glow);
+    color: var(--red-glow);
+    background: var(--red-dark);
+  }
+
+  /* ── TEAMS ── */
+  .teams-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .team-box {
+    background: var(--bg-panel);
+    border-radius: 6px;
+    padding: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .team-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .team-box.blue-box::before { background: linear-gradient(90deg, transparent, var(--blue), var(--blue-glow), var(--blue), transparent); }
+  .team-box.red-box::before  { background: linear-gradient(90deg, transparent, var(--red), var(--red-glow), var(--red), transparent); }
+
+  .team-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-align: center;
+    margin-bottom: 8px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    width: 100%;
+    display: block;
+    text-transform: uppercase;
+  }
+  .blue-label {
+    background: linear-gradient(90deg, transparent, rgba(26,110,245,0.2), transparent);
+    color: #7aaeff;
+    border: 1px solid rgba(26,110,245,0.3);
+  }
+  .red-label {
+    background: linear-gradient(90deg, transparent, rgba(229,32,32,0.2), transparent);
+    color: #ff7a7a;
+    border: 1px solid rgba(229,32,32,0.3);
+  }
+
+  /* ── PICK SLOTS ── */
+  .picks-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .pick-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .pick-slot-img, .pick-slot .empty-slot {
+    width: 54px;
+    height: 54px;
+    border-radius: 5px;
+    object-fit: cover;
+  }
+
+  .pick-slot-img {
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    display: block;
+  }
+
+  .empty-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px dashed var(--border-dim);
+    border-radius: 5px;
+    font-size: 18px;
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  .blue-box .active-pick .empty-slot {
+    border-color: var(--blue-glow);
+    border-style: solid;
+    box-shadow: 0 0 10px rgba(58,143,255,0.4), inset 0 0 10px rgba(58,143,255,0.1);
+    animation: pulse-blue 1.2s ease-in-out infinite;
+    opacity: 1;
+  }
+  .red-box .active-pick .empty-slot {
+    border-color: var(--red-glow);
+    border-style: solid;
+    box-shadow: 0 0 10px rgba(255,68,68,0.4), inset 0 0 10px rgba(255,68,68,0.1);
+    animation: pulse-red 1.2s ease-in-out infinite;
+    opacity: 1;
+  }
+
+  @keyframes pulse-blue {
+    0%,100%{ box-shadow: 0 0 10px rgba(58,143,255,0.4), inset 0 0 10px rgba(58,143,255,0.1); }
+    50%{ box-shadow: 0 0 20px rgba(58,143,255,0.7), inset 0 0 16px rgba(58,143,255,0.2); }
+  }
+  @keyframes pulse-red {
+    0%,100%{ box-shadow: 0 0 10px rgba(255,68,68,0.4), inset 0 0 10px rgba(255,68,68,0.1); }
+    50%{ box-shadow: 0 0 20px rgba(255,68,68,0.7), inset 0 0 16px rgba(255,68,68,0.2); }
+  }
+
+  .pick-slot-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    text-align: center;
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .pick-slot-label.named { color: var(--text-mid); }
+
+  /* ── BAN SLOTS ── */
+  .bans-section { margin-top: 4px; }
+  .bans-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 5px;
+  }
+  .bans-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .ban-slot {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .ban-slot-img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(0.6) brightness(0.45) sepia(0.3);
+    border-radius: 4px;
+  }
+
+  .empty-ban {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed var(--border-dim);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+    opacity: 0.4;
+  }
+
+  .ban-x {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff4444;
+    font-size: 18px;
+    font-weight: 900;
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(255,68,68,0.8);
+  }
+
+  .blue-box .active-ban .empty-ban {
+    border-color: var(--red-glow);
+    border-style: solid;
+    animation: pulse-ban 1.2s ease-in-out infinite;
+    opacity: 1;
+  }
+  .red-box .active-ban .empty-ban {
+    border-color: var(--red-glow);
+    border-style: solid;
+    animation: pulse-ban 1.2s ease-in-out infinite;
+    opacity: 1;
+  }
+  @keyframes pulse-ban {
+    0%,100%{ box-shadow: 0 0 6px rgba(255,68,68,0.4); border-color: #cc2020; }
+    50%{ box-shadow: 0 0 12px rgba(255,68,68,0.7); border-color: var(--red-glow); }
+  }
+
+  /* ── PHASE BAR ── */
+  .phase-bar {
+    text-align: center;
+    margin: 8px 0 10px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  .phase-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0.4;
+  }
+  .phase-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-bright);
+  }
+  .phase-desc {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--text-mid);
+    margin-top: 2px;
+  }
+  .phase-bar.blue-turn {
+    background: rgba(26,110,245,0.08);
+    border-color: rgba(26,110,245,0.4);
+    color: var(--blue-glow);
+  }
+  .phase-bar.blue-turn .phase-name { color: #8abeff; }
+  .phase-bar.red-turn {
+    background: rgba(229,32,32,0.08);
+    border-color: rgba(229,32,32,0.4);
+    color: var(--red-glow);
+  }
+  .phase-bar.red-turn .phase-name { color: #ff8a8a; }
+  .phase-bar.done-phase {
+    background: rgba(64,180,64,0.08);
+    border-color: rgba(64,180,64,0.4);
+  }
+  .phase-bar.done-phase .phase-name { color: #80ee80; }
+
+  /* ── FILTER ROW ── */
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 3px;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-card);
+    color: var(--text-bright);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box::placeholder { color: var(--text-dim); }
+  .search-box:focus { border-color: var(--gold-dim); }
+
+  .role-btn {
+    padding: 4px 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .role-btn:hover { color: var(--text-mid); border-color: var(--text-dim); }
+  .role-btn.active {
+    background: rgba(240,192,64,0.12);
+    color: var(--gold);
+    border-color: var(--gold-dim);
+  }
+
+  /* role color accents when active */
+  .role-btn[data-role="Tank"].active    { background: rgba(80,160,255,0.12); color: #80c0ff; border-color: #2060a0; }
+  .role-btn[data-role="Fighter"].active { background: rgba(255,140,40,0.12); color: #ffa060; border-color: #804020; }
+  .role-btn[data-role="Assassin"].active{ background: rgba(180,80,255,0.12); color: #c080ff; border-color: #6020a0; }
+  .role-btn[data-role="Mage"].active    { background: rgba(100,200,255,0.12); color: #80e0ff; border-color: #204080; }
+  .role-btn[data-role="Marksman"].active{ background: rgba(255,220,80,0.12); color: #ffe060; border-color: #806020; }
+  .role-btn[data-role="Support"].active { background: rgba(80,220,160,0.12); color: #60e0a0; border-color: #208060; }
+
+  /* ── HERO GRID ── */
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 5px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--bg-panel);
+    border-radius: 5px;
+    border: 1px solid var(--border-dim);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-dim) transparent;
+  }
+  .hero-grid::-webkit-scrollbar { width: 4px; }
+  .hero-grid::-webkit-scrollbar-track { background: transparent; }
+  .hero-grid::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+
+  .hero-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 3px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+    position: relative;
+    background: transparent;
+  }
+  .hero-card:hover {
+    background: var(--bg-hover);
+    border-color: var(--gold-dim);
+    transform: translateY(-1px);
+  }
+  .hero-card:hover .hero-icon { box-shadow: 0 4px 12px rgba(0,0,0,0.6), 0 0 8px rgba(240,192,64,0.3); }
+
+  .hero-icon, .hero-fallback {
+    width: 54px;
+    height: 54px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .hero-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding: 2px;
+    line-height: 1.2;
+    overflow: hidden;
+  }
+
+  .hero-card span {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-mid);
+    text-align: center;
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .hero-card.used { opacity: 0.18; pointer-events: none; }
+  .hero-card.banned { opacity: 0.12; pointer-events: none; }
+
+  /* ── ROLE COLORS for fallback cards ── */
+  .role-Tank    { background: linear-gradient(135deg, #0a2040, #1a4080); color: #80c0ff; }
+  .role-Fighter { background: linear-gradient(135deg, #301000, #602800); color: #ffa060; }
+  .role-Assassin{ background: linear-gradient(135deg, #1a0030, #400060); color: #c080ff; }
+  .role-Mage    { background: linear-gradient(135deg, #001830, #003060); color: #80e0ff; }
+  .role-Marksman{ background: linear-gradient(135deg, #302000, #604000); color: #ffe060; }
+  .role-Support { background: linear-gradient(135deg, #002818, #005030); color: #60e0a0; }
+
+  /* ── COMPLETE STATE ── */
+  .complete-overlay {
+    text-align: center;
+    padding: 20px;
+    background: var(--bg-panel);
+    border-radius: 6px;
+    border: 1px solid rgba(240,192,64,0.3);
+    margin-top: 10px;
+    box-shadow: 0 0 30px rgba(240,192,64,0.08);
+  }
+  .complete-overlay h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    background: linear-gradient(180deg, var(--gold-glow) 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="rgba(240,192,64,0.08)" stroke="#f0c040" stroke-width="1.2"/>
+        <polygon points="14,6 22,10 22,18 14,22 6,18 6,10" fill="rgba(240,192,64,0.05)" stroke="#a07820" stroke-width="0.8"/>
+        <polygon points="14,10 18,12 18,16 14,18 10,16 10,12" fill="#f0c040"/>
+      </svg>
+      <h1>Draft Simulator</h1>
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="rgba(240,192,64,0.08)" stroke="#f0c040" stroke-width="1.2"/>
+        <polygon points="14,6 22,10 22,18 14,22 6,18 6,10" fill="rgba(240,192,64,0.05)" stroke="#a07820" stroke-width="0.8"/>
+        <polygon points="14,10 18,12 18,16 14,18 10,16 10,12" fill="#f0c040"/>
+      </svg>
+    </div>
+    <div class="header-sub">Mobile Legends · Competitive Mode · Pick &amp; Ban</div>
+    <div class="header-divider"><div class="header-divider-gem"></div></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn btn-danger" onclick="resetAll()">⟳ Reset</button>
+    <button class="btn" onclick="undoLast()">↩ Undo</button>
+    <button class="btn" id="skip-btn" onclick="skipTurn()" style="display:none">Skip Turn</button>
+  </div>
+
+  <!-- TEAMS -->
+  <div class="teams-row">
+    <div class="team-box blue-box" id="blue-team-box">
+      <div class="team-label blue-label">⬡ Blue Side</div>
+      <div class="picks-row" id="blue-picks"></div>
+      <div class="bans-section">
+        <div class="bans-label">— Bans —</div>
+        <div class="bans-row" id="blue-bans"></div>
+      </div>
+    </div>
+    <div class="team-box red-box" id="red-team-box">
+      <div class="team-label red-label">⬡ Red Side</div>
+      <div class="picks-row" id="red-picks"></div>
+      <div class="bans-section">
+        <div class="bans-label">— Bans —</div>
+        <div class="bans-row" id="red-bans"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE BAR -->
+  <div class="phase-bar" id="phase-bar">
+    <div class="phase-name" id="phase-name">Loading...</div>
+    <div class="phase-desc" id="phase-desc"></div>
+  </div>
+
+  <!-- FILTER ROW -->
+  <div class="filter-row">
+    <input class="search-box" id="search" placeholder="🔍 Search hero..." oninput="renderGrid()">
+    <button class="role-btn active" data-role="all" onclick="setRole('all',this)">All</button>
+    <button class="role-btn" data-role="Tank" onclick="setRole('Tank',this)">Tank</button>
+    <button class="role-btn" data-role="Fighter" onclick="setRole('Fighter',this)">Fighter</button>
+    <button class="role-btn" data-role="Assassin" onclick="setRole('Assassin',this)">Assassin</button>
+    <button class="role-btn" data-role="Mage" onclick="setRole('Mage',this)">Mage</button>
+    <button class="role-btn" data-role="Marksman" onclick="setRole('Marksman',this)">MM</button>
+    <button class="role-btn" data-role="Support" onclick="setRole('Support',this)">Support</button>
+  </div>
+
+  <!-- HERO GRID -->
+  <div class="hero-grid" id="hero-grid"></div>
+
+</div>
+
+<script>
+// ── HERO DATA ─────────────────────────────────────────────────────────────────
+// Using multiple CDN sources with fallback chain
+const CDN = {
+  wiki: (name) => {
+    const encoded = encodeURIComponent(name.replace(/ /g,'_').replace(/'/g,'%27'));
+    return `https://static.wikia.nocookie.net/mobile-legends/images/`;
+  }
+};
+
+const HEROES_RAW = [
+  {name:"Miya",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b4/Miya_icon.png"},
+  {name:"Balmond",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/ae/Balmond_icon.png"},
+  {name:"Saber",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/0d/Saber_icon.png"},
+  {name:"Alice",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/9/9d/Alice_icon.png"},
+  {name:"Nana",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/47/Nana_icon.png"},
+  {name:"Tigreal",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/bc/Tigreal_icon.png"},
+  {name:"Alucard",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/7/7a/Alucard_icon.png"},
+  {name:"Karina",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c3/Karina_icon.png"},
+  {name:"Akai",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/f/f3/Akai_icon.png"},
+  {name:"Franco",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/f/f4/Franco_icon.png"},
+  {name:"Bane",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/bd/Bane_icon.png"},
+  {name:"Bruno",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e7/Bruno_icon.png"},
+  {name:"Clint",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b2/Clint_icon.png"},
+  {name:"Rafaela",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/d/d8/Rafaela_icon.png"},
+  {name:"Eudora",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e0/Eudora_icon.png"},
+  {name:"Zilong",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/82/Zilong_icon.png"},
+  {name:"Fanny",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4e/Fanny_icon.png"},
+  {name:"Layla",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/2/24/Layla_icon.png"},
+  {name:"Minotaur",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c5/Minotaur_icon.png"},
+  {name:"Lolita",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/55/Lolita_icon.png"},
+  {name:"Hayabusa",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/46/Hayabusa_icon.png"},
+  {name:"Freya",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/56/Freya_icon.png"},
+  {name:"Gord",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/ae/Gord_icon.png"},
+  {name:"Natalia",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/f/f3/Natalia_icon.png"},
+  {name:"Kagura",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/01/Kagura_icon.png"},
+  {name:"Chou",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/3a/Chou_icon.png"},
+  {name:"Sun",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/a2/Sun_icon.png"},
+  {name:"Alpha",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/6c/Alpha_icon.png"},
+  {name:"Ruby",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4e/Ruby_icon.png"},
+  {name:"Yi Sun-shin",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/37/Yi_Sun-shin_icon.png"},
+  {name:"Moskov",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/87/Moskov_icon.png"},
+  {name:"Johnson",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/83/Johnson_icon.png"},
+  {name:"Cyclops",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/f/f3/Cyclops_icon.png"},
+  {name:"Estes",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/f/f3/Estes_icon.png"},
+  {name:"Hilda",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/60/Hilda_icon.png"},
+  {name:"Aurora",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/a4/Aurora_icon.png"},
+  {name:"Lapu-Lapu",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/8d/Lapu-Lapu_icon.png"},
+  {name:"Vexana",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/9/9a/Vexana_icon.png"},
+  {name:"Roger",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/7/70/Roger_icon.png"},
+  {name:"Karrie",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4a/Karrie_icon.png"},
+  {name:"Gatotkaca",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/1e/Gatotkaca_icon.png"},
+  {name:"Harley",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/be/Harley_icon.png"},
+  {name:"Irithel",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/ee/Irithel_icon.png"},
+  {name:"Grock",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e4/Grock_icon.png"},
+  {name:"Argus",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/18/Argus_icon.png"},
+  {name:"Odette",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4f/Odette_icon.png"},
+  {name:"Lancelot",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/9/9e/Lancelot_icon.png"},
+  {name:"Diggie",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/8b/Diggie_icon.png"},
+  {name:"Hylos",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/01/Hylos_icon.png"},
+  {name:"Zhask",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/5a/Zhask_icon.png"},
+  {name:"Helcurt",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/a3/Helcurt_icon.png"},
+  {name:"Pharsa",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/1b/Pharsa_icon.png"},
+  {name:"Lesley",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b8/Lesley_icon.png"},
+  {name:"Jawhead",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/14/Jawhead_icon.png"},
+  {name:"Angela",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/d/d5/Angela_icon.png"},
+  {name:"Gusion",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/2/28/Gusion_icon.png"},
+  {name:"Valir",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c7/Valir_icon.png"},
+  {name:"Martis",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e4/Martis_icon.png"},
+  {name:"Uranus",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/87/Uranus_icon.png"},
+  {name:"Hanabi",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/02/Hanabi_icon.png"},
+  {name:"Chang'e",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/52/Chang%27e_icon.png"},
+  {name:"Kaja",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/cc/Kaja_icon.png"},
+  {name:"Selena",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c5/Selena_icon.png"},
+  {name:"Aldous",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/d/d6/Aldous_icon.png"},
+  {name:"Lunox",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/ae/Lunox_icon.png"},
+  {name:"Hanzo",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/6a/Hanzo_icon.png"},
+  {name:"Belerick",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c4/Belerick_icon.png"},
+  {name:"Kimmy",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/3b/Kimmy_icon.png"},
+  {name:"Thamuz",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/64/Thamuz_icon.png"},
+  {name:"Harith",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4f/Harith_icon.png"},
+  {name:"Minsitthar",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e7/Minsitthar_icon.png"},
+  {name:"Kadita",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/a5/Kadita_icon.png"},
+  {name:"Faramis",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b8/Faramis_icon.png"},
+  {name:"Badang",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/7/74/Badang_icon.png"},
+  {name:"Khufra",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/d/d8/Khufra_icon.png"},
+  {name:"Granger",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/2/2c/Granger_icon.png"},
+  {name:"Guinevere",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/a3/Guinevere_icon.png"},
+  {name:"Esmeralda",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/52/Esmeralda_icon.png"},
+  {name:"Terizla",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/5e/Terizla_icon.png"},
+  {name:"X.Borg",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/5e/X.Borg_icon.png"},
+  {name:"Ling",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/69/Ling_icon.png"},
+  {name:"Dyrroth",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/12/Dyrroth_icon.png"},
+  {name:"Lylia",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/32/Lylia_icon.png"},
+  {name:"Baxia",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c9/Baxia_icon.png"},
+  {name:"Masha",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/10/Masha_icon.png"},
+  {name:"Wanwan",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/47/Wanwan_icon.png"},
+  {name:"Silvanna",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/9/9a/Silvanna_icon.png"},
+  {name:"Cecilion",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/ef/Cecilion_icon.png"},
+  {name:"Carmilla",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/cc/Carmilla_icon.png"},
+  {name:"Atlas",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e4/Atlas_icon.png"},
+  {name:"Popol and Kupa",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/18/Popol_and_Kupa_icon.png"},
+  {name:"Luo Yi",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/0d/Luo_Yi_icon.png"},
+  {name:"Yu Zhong",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/a/ac/Yu_Zhong_icon.png"},
+  {name:"Benedetta",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/19/Benedetta_icon.png"},
+  {name:"Khaleed",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/3a/Khaleed_icon.png"},
+  {name:"Barats",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/cd/Barats_icon.png"},
+  {name:"Brody",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b3/Brody_icon.png"},
+  {name:"Yve",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/9/91/Yve_icon.png"},
+  {name:"Mathilda",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b7/Mathilda_icon.png"},
+  {name:"Paquito",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/52/Paquito_icon.png"},
+  {name:"Gloo",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/83/Gloo_icon.png"},
+  {name:"Beatrix",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/82/Beatrix_icon.png"},
+  {name:"Phoveus",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/83/Phoveus_icon.png"},
+  {name:"Natan",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/46/Natan_icon.png"},
+  {name:"Aulus",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/68/Aulus_icon.png"},
+  {name:"Valentina",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/62/Valentina_icon.png"},
+  {name:"Edith",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/8c/Edith_icon.png"},
+  {name:"Floryn",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/d/d6/Floryn_icon.png"},
+  {name:"Yin",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/5/52/Yin_icon.png"},
+  {name:"Melissa",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e1/Melissa_icon.png"},
+  {name:"Xavier",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/7/7b/Xavier_icon.png"},
+  {name:"Julian",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/ec/Julian_icon.png"},
+  {name:"Fredrinn",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/3/35/Fredrinn_icon.png"},
+  {name:"Joy",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/e/e5/Joy_icon.png"},
+  {name:"Arlott",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/4b/Arlott_icon.png"},
+  {name:"Novaria",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b5/Novaria_icon.png"},
+  {name:"Ixia",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/c/c9/Ixia_icon.png"},
+  {name:"Nolan",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/1/13/Nolan_icon.png"},
+  {name:"Cici",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/6/6f/Cici_icon.png"},
+  {name:"Chip",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/84/Chip_icon.png"},
+  {name:"Zhuxin",role:"Mage",img:"https://static.wikia.nocookie.net/mobile-legends/images/7/7b/Zhuxin_icon.png"},
+  {name:"Lukas",role:"Fighter",img:"https://static.wikia.nocookie.net/mobile-legends/images/4/47/Lukas_icon.png"},
+  {name:"Kalea",role:"Tank",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b8/Kalea_icon.png"},
+  {name:"Suyou",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/80/Suyou_icon.png"},
+  {name:"Aamon",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/8/8f/Aamon_icon.png"},
+  {name:"Sora",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/b/b7/Sora_icon.png"},
+  {name:"Claude",role:"Marksman",img:"https://static.wikia.nocookie.net/mobile-legends/images/0/0a/Claude_icon.png"},
+  {name:"Haya",role:"Assassin",img:"https://static.wikia.nocookie.net/mobile-legends/images/thumb/3/35/Haya_icon.png/120px-Haya_icon.png"},
+  {name:"Marcel",role:"Support",img:"https://static.wikia.nocookie.net/mobile-legends/images/thumb/a/a3/Marcel_icon.png/120px-Marcel_icon.png"},
+];
+
+// Deduplicate by name
+const uniqueHeroes = [...new Map(HEROES_RAW.map(h => [h.name, h])).values()];
+
+// Role icon glyphs for fallback tiles
+const ROLE_GLYPH = {
+  Tank:"🛡", Fighter:"⚔", Assassin:"🗡", Mage:"✨", Marksman:"🏹", Support:"💚"
+};
+
+// ── Image proxy helper ────────────────────────────────────────────────────────
+// Routes Fandom/wikia URLs through weserv.nl to bypass hotlink protection.
+// Falls back to direct URL, then to an emoji+abbreviation tile.
+function proxyImg(url) {
+  // Only proxy wikia/fandom URLs; pass others through as-is
+  if (/wikia\.nocookie\.net|fandom\.com/i.test(url)) {
+    return 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=120&h=120&fit=cover&output=webp&il';
+  }
+  return url;
+}
+
+// ── Robust image element builder ──────────────────────────────────────────────
+function makeHeroImg(hero, w, h, extraClass='') {
+  const abbr  = hero.name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+  const glyph = ROLE_GLYPH[hero.role] || '?';
+  const fallbackTile = `<div class='hero-fallback role-${hero.role}' style='width:${w}px;height:${h}px;border-radius:inherit;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Rajdhani,sans-serif;font-size:${Math.round(w*0.18)}px;font-weight:700;letter-spacing:.04em;color:inherit;overflow:hidden;padding:2px;text-align:center;'><span style='font-size:${Math.round(w*0.36)}px;line-height:1;'>${glyph}</span><span style='font-size:${Math.round(w*0.17)}px;line-height:1.1;margin-top:2px;'>${abbr}</span></div>`;
+
+  const proxied = proxyImg(hero.img);
+  const direct  = hero.img;
+
+  // Stage 1 → proxied URL
+  // Stage 2 (onerror) → try direct original URL
+  // Stage 3 (onerror on direct) → render emoji/abbr fallback tile
+  return `<img
+    class="${extraClass}"
+    src="${proxied}"
+    data-direct="${direct}"
+    data-fallback-used="0"
+    alt="${hero.name}"
+    width="${w}" height="${h}"
+    style="width:${w}px;height:${h}px;border-radius:inherit;"
+    onerror="(function(el){
+      if(el.dataset.fallbackUsed==='0'){
+        el.dataset.fallbackUsed='1';
+        el.src=el.dataset.direct;
+      } else {
+        el.outerHTML=\`${fallbackTile.replace(/`/g,'\\`')}\`;
+      }
+    })(this)"
+  >`;
+}
+
+// ── DRAFT SEQUENCE ─────────────────────────────────────────────────────────────
+const DRAFT_SEQUENCE = [
+  {team:"blue",type:"ban"},{team:"red",type:"ban"},
+  {team:"blue",type:"ban"},{team:"red",type:"ban"},
+  {team:"blue",type:"pick"},
+  {team:"red",type:"pick"},{team:"red",type:"pick"},
+  {team:"blue",type:"pick"},{team:"blue",type:"pick"},
+  {team:"red",type:"pick"},
+  {team:"blue",type:"ban"},
+  {team:"red",type:"ban"},
+  {team:"red",type:"pick"},
+  {team:"blue",type:"pick"},{team:"blue",type:"pick"},
+  {team:"red",type:"pick"},
+];
+
+let state = { step:0, bluePicks:[], redPicks:[], blueBans:[], redBans:[], history:[] };
+let activeRole = 'all';
+
+// ── PHASE LABEL ────────────────────────────────────────────────────────────────
+function getPhaseLabel(step) {
+  if (step >= DRAFT_SEQUENCE.length)
+    return {name:"⚔ Draft Complete!", desc:"Both teams have finished picking and banning.", cls:"done-phase"};
+  const s = DRAFT_SEQUENCE[step];
+  const teamName = s.team==='blue' ? '⬡ Blue Side' : '⬡ Red Side';
+  const action = s.type==='ban' ? 'Ban Phase' : 'Pick Phase';
+  const bluePick=state.bluePicks.length, redPick=state.redPicks.length;
+  const blueBan=state.blueBans.length, redBan=state.redBans.length;
+  let desc = s.type==='pick'
+    ? `Pick ${s.team==='blue'?bluePick+1:redPick+1} of 5`
+    : `Ban ${s.team==='blue'?blueBan+1:redBan+1} of 3`;
+  return {name:`${teamName} — ${action}`, desc, cls: s.team==='blue'?'blue-turn':'red-turn'};
+}
+
+// ── RENDER TEAM ────────────────────────────────────────────────────────────────
+function renderTeam(team) {
+  const picks = team==='blue' ? state.bluePicks : state.redPicks;
+  const bans  = team==='blue' ? state.blueBans  : state.redBans;
+
+  // Picks (5 slots)
+  const pickHtml = Array.from({length:5}, (_,i) => {
+    const hero = picks[i];
+    const isNext = state.step < DRAFT_SEQUENCE.length &&
+      DRAFT_SEQUENCE[state.step].team===team &&
+      DRAFT_SEQUENCE[state.step].type==='pick' &&
+      i===picks.length;
+    if (hero) {
+      return `<div class="pick-slot">
+        ${makeHeroImg(hero, 54, 54, 'pick-slot-img')}
+        <span class="pick-slot-label named">${hero.name}</span>
+      </div>`;
+    }
+    return `<div class="pick-slot ${isNext?'active-pick':''}">
+      <div class="empty-slot" style="width:54px;height:54px;">✦</div>
+      <span class="pick-slot-label">Pick ${i+1}</span>
+    </div>`;
+  }).join('');
+
+  // Bans (3 slots)
+  const banHtml = Array.from({length:3}, (_,i) => {
+    const hero = bans[i];
+    const isNext = state.step < DRAFT_SEQUENCE.length &&
+      DRAFT_SEQUENCE[state.step].team===team &&
+      DRAFT_SEQUENCE[state.step].type==='ban' &&
+      i===bans.length;
+    if (hero) {
+      return `<div class="ban-slot">
+        ${makeHeroImg(hero, 36, 36, 'ban-slot-img')}
+        <div class="ban-x">✕</div>
+      </div>`;
+    }
+    return `<div class="ban-slot ${isNext?'active-ban':''}">
+      <div class="empty-ban">✦</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById(`${team}-picks`).innerHTML = pickHtml;
+  document.getElementById(`${team}-bans`).innerHTML  = banHtml;
+}
+
+// ── RENDER PHASE ───────────────────────────────────────────────────────────────
+function renderPhase() {
+  const ph  = getPhaseLabel(state.step);
+  const bar = document.getElementById('phase-bar');
+  bar.className = 'phase-bar ' + ph.cls;
+  document.getElementById('phase-name').textContent = ph.name;
+  document.getElementById('phase-desc').textContent = ph.desc;
+}
+
+// ── ROLE FILTER ────────────────────────────────────────────────────────────────
+function setRole(role, btn) {
+  activeRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+function getAllUsed() {
+  const used = new Set();
+  [...state.bluePicks,...state.redPicks,...state.blueBans,...state.redBans].forEach(h=>used.add(h.name));
+  return used;
+}
+
+// ── RENDER GRID ────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const q    = document.getElementById('search').value.toLowerCase();
+  const used = getAllUsed();
+  const done = state.step >= DRAFT_SEQUENCE.length;
+
+  const filtered = uniqueHeroes.filter(h => {
+    if (activeRole!=='all' && h.role!==activeRole) return false;
+    if (q && !h.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  document.getElementById('hero-grid').innerHTML = filtered.map(h => {
+    const isUsed   = used.has(h.name);
+    const disabled = (done || isUsed) ? 'used' : '';
+    const abbr     = h.name.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+    const glyph    = ROLE_GLYPH[h.role] || '?';
+    const shortName = h.name.length > 9 ? h.name.slice(0,8)+'…' : h.name;
+    return `<div class="hero-card ${disabled}" onclick="selectHero('${h.name.replace(/'/g,"\\'")}')">
+      ${makeHeroImg(h, 54, 54, 'hero-icon')}
+      <span>${shortName}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── SELECT HERO ────────────────────────────────────────────────────────────────
+function selectHero(name) {
+  if (state.step >= DRAFT_SEQUENCE.length) return;
+  const hero = uniqueHeroes.find(h => h.name === name);
+  if (!hero) return;
+  const used = getAllUsed();
+  if (used.has(name)) return;
+
+  const cur = DRAFT_SEQUENCE[state.step];
+  state.history.push(JSON.parse(JSON.stringify(state)));
+
+  if (cur.type==='pick') {
+    if (cur.team==='blue') state.bluePicks.push(hero);
+    else state.redPicks.push(hero);
+  } else {
+    if (cur.team==='blue') state.blueBans.push(hero);
+    else state.redBans.push(hero);
+  }
+  state.step++;
+  render();
+}
+
+// ── UNDO / RESET ───────────────────────────────────────────────────────────────
+function undoLast() {
+  if (state.history.length===0) return;
+  const prev = state.history.pop();
+  state.step      = prev.step;
+  state.bluePicks = prev.bluePicks;
+  state.redPicks  = prev.redPicks;
+  state.blueBans  = prev.blueBans;
+  state.redBans   = prev.redBans;
+  render();
+}
+
+function resetAll() {
+  state = {step:0, bluePicks:[], redPicks:[], blueBans:[], redBans:[], history:[]};
+  render();
+}
+
+function skipTurn() {
+  // not used in standard flow but kept for compatibility
+  state.step++;
+  render();
+}
+
+// ── MASTER RENDER ──────────────────────────────────────────────────────────────
+function render() {
+  renderTeam('blue');
+  renderTeam('red');
+  renderPhase();
+  renderGrid();
+}
+
+render();
+</script>
+</body>
+</html>
